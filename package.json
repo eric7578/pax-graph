@@ -1,0 +1,8 @@
+{
+  "name": "pax-graph",
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ]
+}
