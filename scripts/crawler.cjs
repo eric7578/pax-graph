@@ -1,10 +1,11 @@
-import axios from 'axios';
-import _ from 'lodash';
-import dayjs from 'dayjs';
-import timezone from 'dayjs/plugin/timezone';
-import fs from 'fs/promises';
-import path from 'path';
-import { Pax } from '../src/types';
+#!/usr/bin/env node
+
+const axios = require('axios');
+const _ = require('lodash');
+const dayjs = require('dayjs');
+const timezone = require('dayjs/plugin/timezone');
+const fs = require('fs/promises');
+const path = require('path');
 
 dayjs.extend(timezone);
 dayjs.tz.setDefault('Asia/Taipei');
@@ -45,8 +46,8 @@ dayjs.tz.setDefault('Asia/Taipei');
   const startAt = dayjs().startOf('hour');
   const range = [startAt.subtract(3, 'hours'), startAt];
   const logsDir = path.join(
-    process.cwd(),
-    'src/logs',
+    __dirname,
+    '../src/logs',
     startAt.year().toString()
   );
   const logPath = path.join(logsDir, `${startAt.format('YYYY-MM-DD')}.json`);
@@ -56,13 +57,12 @@ dayjs.tz.setDefault('Asia/Taipei');
   try {
     records = JSON.parse(await fs.readFile(logPath, 'utf-8'));
   } catch (err) {
-    // check if file exists in typescript
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+    if (err.code !== 'ENOENT') {
       throw err;
     }
   } finally {
     const isRangeExists = records.some(
-      (r: any) =>
+      (r) =>
         r.range[0] === range[0].toISOString() &&
         r.range[1] === range[1].toISOString()
     );
@@ -85,20 +85,13 @@ dayjs.tz.setDefault('Asia/Taipei');
   );
 })();
 
-async function getPaxData(url: string) {
-  type RawPax = {
-    paxCnt: string;
-    nationality: string;
-    age: string;
-  };
-
+async function getPaxData(url) {
   const resp = await axios.get(url);
-  const paxRows: Pax[] = await resp.data
+  const paxRows = resp.data
     .filter(
-      (r: RawPax) =>
-        r.paxCnt !== null && r.nationality !== null && r.age !== null
+      (r) => r.paxCnt !== null && r.nationality !== null && r.age !== null
     )
-    .map((r: RawPax) => ({
+    .map((r) => ({
       count: Number(r.paxCnt),
       nationality: r.nationality,
       age: r.age,
@@ -106,13 +99,13 @@ async function getPaxData(url: string) {
   return paxRows;
 }
 
-function groupPaxRows(paxData: Pax[]) {
+function groupPaxRows(paxData) {
   const groupedData = _.groupBy(paxData, (r) => r.nationality + r.age);
   return Object.values(groupedData).map((rows) => {
     return {
-      count: rows.reduce((acc: number, r: Pax) => acc + r.count, 0),
+      count: rows.reduce((acc, r) => acc + r.count, 0),
       nationality: rows[0].nationality,
       age: rows[0].age,
-    } as Pax;
+    };
   });
 }

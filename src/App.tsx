@@ -105,6 +105,13 @@ export default function App() {
       });
   }, [chartLogs]);
 
+  console.log(
+    flattenChartLogs.map((log) => ({
+      x: log.date,
+      y: log.leave,
+    }))
+  );
+
   return (
     <Theme>
       <Flex direction="row" align="center" justify="end" gap="1" mx="2">
@@ -238,6 +245,28 @@ export default function App() {
               y: log.enter,
             })),
           },
+          {
+            type: 'line',
+            name: 'Departure Median',
+            data: flattenChartLogs.map((log) => ({
+              x: log.date,
+              y: Math.floor(
+                (log.leave[log.leave.length - 1] - log.leave[0]) / 2 +
+                  log.leave[0]
+              ),
+            })),
+          },
+          {
+            type: 'line',
+            name: 'Arrival Median',
+            data: flattenChartLogs.map((log) => ({
+              x: log.date,
+              y: Math.floor(
+                (log.enter[log.enter.length - 1] - log.enter[0]) / 2 +
+                  log.enter[0]
+              ),
+            })),
+          },
         ]}
         options={{
           chart: {
@@ -250,12 +279,12 @@ export default function App() {
               show: false,
             },
           },
-          colors: ['#d4526e', '#33b2df'],
+          colors: ['#d4526e', '#33b2df', '#d4526e', '#33b2df'],
           dataLabels: {
             enabled: false,
           },
           fill: {
-            opacity: [0.5, 0.5],
+            opacity: [0.24, 0.24, 1, 1],
           },
           forecastDataPoints: {
             count: 2,
