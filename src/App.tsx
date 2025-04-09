@@ -1,18 +1,19 @@
 import { useMemo, useState } from 'react';
 import ReactApexChart from 'react-apexcharts';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 import { Log, Pax } from './types';
 import _ from 'lodash';
 import '@radix-ui/themes/styles.css';
 import { Button, DropdownMenu, Flex, Theme } from '@radix-ui/themes';
 
-type ChartLog = {
-  date: dayjs.Dayjs;
-  leave: number;
-  enter: number;
-};
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.tz.setDefault('Asia/Taipei');
 
 const allLogs = JSON.parse(import.meta.env.VITE_PAX_LOGS) as Log[];
+
 const allNationalities = [
   ...new Set(
     _.flatten([
@@ -72,45 +73,15 @@ export default function App() {
 
   const chartLogs = useMemo(() => {
     return filteredNationalitiesLogs.map((l: Log) => {
-      let start = dayjs(l.range[0]);
-      const end = dayjs(l.range[1]);
-      const logs: ChartLog[] = [];
-
-      do {
-        logs.push({
-          date: start,
-          leave: l.leave.reduce((acc, p) => acc + p.count, 0),
-          enter: l.enter.reduce((acc, p) => acc + p.count, 0),
-        });
-        start = start.add(1, 'hour');
-      } while (start.isBefore(end));
-
-      return logs;
+      return {
+        date: dayjs(l.range[0]),
+        leave: l.leave.reduce((acc, p) => acc + p.count, 0),
+        enter: l.enter.reduce((acc, p) => acc + p.count, 0),
+      };
     });
   }, [filteredNationalitiesLogs]);
 
-  const flattenChartLogs = useMemo(() => {
-    const flatten = _.flatten(chartLogs);
-    const grouped = _.groupBy(flatten, (log) => log.date.toISOString());
-    return Object.entries(grouped)
-      .filter(([date, logs]) => logs.length > 1)
-      .map(([date, logs]) => {
-        const leave = logs.map((l) => l.leave);
-        const enter = logs.map((l) => l.enter);
-        return {
-          date,
-          leave: [Math.min(...leave), Math.max(...leave)],
-          enter: [Math.min(...enter), Math.max(...enter)],
-        };
-      });
-  }, [chartLogs]);
-
-  console.log(
-    flattenChartLogs.map((log) => ({
-      x: log.date,
-      y: log.leave,
-    }))
-  );
+  console.log(filteredNationalitiesLogs);
 
   return (
     <Theme>
@@ -226,52 +197,24 @@ export default function App() {
         </DropdownMenu.Root>
       </Flex>
       <ReactApexChart
-        type="rangeArea"
+        type="line"
         height={350}
         series={[
           {
-            type: 'rangeArea',
+            type: 'line',
             name: 'Departure',
-            data: flattenChartLogs.map((log) => ({
-              x: log.date,
-              y: log.leave,
-            })),
+            data: chartLogs.map((log) => log.leave),
           },
           {
-            type: 'rangeArea',
+            type: 'line',
             name: 'Arrival',
-            data: flattenChartLogs.map((log) => ({
-              x: log.date,
-              y: log.enter,
-            })),
-          },
-          {
-            type: 'line',
-            name: 'Departure Median',
-            data: flattenChartLogs.map((log) => ({
-              x: log.date,
-              y: Math.floor(
-                (log.leave[log.leave.length - 1] - log.leave[0]) / 2 +
-                  log.leave[0]
-              ),
-            })),
-          },
-          {
-            type: 'line',
-            name: 'Arrival Median',
-            data: flattenChartLogs.map((log) => ({
-              x: log.date,
-              y: Math.floor(
-                (log.enter[log.enter.length - 1] - log.enter[0]) / 2 +
-                  log.enter[0]
-              ),
-            })),
+            data: chartLogs.map((log) => log.enter),
           },
         ]}
         options={{
           chart: {
             height: 350,
-            type: 'rangeArea',
+            type: 'line',
             animations: {
               speed: 500,
             },
@@ -284,14 +227,17 @@ export default function App() {
             enabled: false,
           },
           fill: {
-            opacity: [0.24, 0.24, 1, 1],
+            opacity: [1, 1],
           },
           forecastDataPoints: {
             count: 2,
           },
+          title: {
+            text: 'Passengers Summary Every 3 Hours',
+            align: 'left',
+          },
           stroke: {
             curve: 'straight',
-            width: [0, 0, 2, 2],
           },
           legend: {
             horizontalAlign: 'right',
@@ -305,12 +251,10 @@ export default function App() {
             },
           },
           xaxis: {
-            type: 'datetime',
-            labels: {
-              formatter: function (val) {
-                return dayjs(val).format('YYYY-MM-DD HH:mm');
-              },
-            },
+            categories: chartLogs.map((log) => {
+              console.log(log.date);
+              return log.date.format('YYYY-MM-DD HH:mm');
+            }),
           },
         }}
       />
